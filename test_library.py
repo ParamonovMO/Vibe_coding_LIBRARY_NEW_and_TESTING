@@ -1,11 +1,12 @@
 """
-Pytest тесты с Allure для системы управления библиотекой.
+Pytest тесты с Allure для системы управления библиотекой (русская версия).
+Все фикстуры вынесены в conftest.py.
 """
 
 import pytest
 import allure
 from datetime import datetime
-from library import Book, User, Library  # импорты для классов, если нужны явно
+from library import Book, User, Library
 
 
 # ---------- Тесты для книги ----------
@@ -196,6 +197,7 @@ def test_borrow_book_success(library_with_books, sample_user, sample_book):
 @allure.story("Выдача/возврат")
 @allure.title("Нельзя выдать уже выданную книгу")
 def test_borrow_unavailable_book_raises(library_with_books, sample_user, another_user, sample_book):
+    library_with_books.register_user(another_user)
     library_with_books.borrow_book(sample_user.user_id, sample_book.isbn)
     with pytest.raises(RuntimeError, match="уже взята другим"):
         library_with_books.borrow_book(another_user.user_id, sample_book.isbn)
@@ -241,6 +243,7 @@ def test_return_book_not_borrowed_raises(library_with_books, sample_user, sample
 @allure.story("Выдача/возврат")
 @allure.title("Нельзя вернуть книгу, взятую другим пользователем")
 def test_return_book_wrong_user_raises(library_with_books, sample_user, another_user, sample_book):
+    library_with_books.register_user(another_user)
     library_with_books.borrow_book(sample_user.user_id, sample_book.isbn)
     with pytest.raises(RuntimeError, match="взята другим пользователем"):
         library_with_books.return_book(another_user.user_id, sample_book.isbn)
@@ -328,7 +331,6 @@ def test_library_string_representation(library_with_books):
     assert "1 пользователей" in str(library_with_books)
 
 
-# ---------- Тест с использованием пустой библиотеки (фикстура из conftest) ----------
 @allure.feature("Система библиотеки")
 @allure.story("Пустая библиотека")
 @allure.title("Пустая библиотека имеет 0 книг и 0 пользователей")

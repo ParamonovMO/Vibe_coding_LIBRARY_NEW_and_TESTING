@@ -2,6 +2,7 @@
 Система управления библиотекой
 Демонстрирует принципы ООП: классы, инкапсуляция, полиморфизм.
 Используются только стандартные исключения (ValueError, RuntimeError).
+Без импортов typing – встроенные типы Python 3.10+.
 """
 
 from datetime import datetime
@@ -170,14 +171,16 @@ class Library:
         user = self._get_user_by_id(user_id)
         book = self._get_book_by_isbn(isbn)
 
-        if book.is_borrowed:
-            raise RuntimeError(
-                f"Книга '{book.title}' (ISBN: {isbn}) уже взята другим пользователем."
-            )
-
+        # Сначала проверим, не взял ли эту книгу уже этот же пользователь
         if isbn in user.borrowed_isbns:
             raise RuntimeError(
                 f"Пользователь {user_id} уже взял книгу '{book.title}'"
+            )
+
+        # Затем проверим, не взята ли книга другим пользователем
+        if book.is_borrowed:
+            raise RuntimeError(
+                f"Книга '{book.title}' (ISBN: {isbn}) уже взята другим пользователем."
             )
 
         book.borrow(user_id)
