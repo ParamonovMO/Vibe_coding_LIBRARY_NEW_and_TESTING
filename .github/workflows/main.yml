@@ -1,53 +1,47 @@
-name: CI - Run Pytest and Allure
+name: Run tests and publish report
 
 on:
+  schedule:
+    - cron: '0 2 * * *'   # ночной запуск в 2:00 UTC
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches:
+      - main              # если хотите и по коммиту тоже (опционально)
+  workflow_dispatch:      # ручной запуск (полезно для отладки)
 
 jobs:
   test:
-    runs-on: ubuntu-latest   # можно также windows-latest, macos-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12']  # проверяем на нескольких версиях
-
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov allure-pytest
-        # если у вас есть requirements.txt:
-        # pip install -r requirements.txt
-
-    - name: Run tests with coverage
-      run: |
-        pytest --cov=library --cov-report=term-missing --alluredir=allure-results
-
-    - name: Upload coverage report to GitHub
-      uses: codecov/codecov-action@v4
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}  # опционально, но рекомендуем
-
-    - name: Upload Allure results as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: allure-results-${{ matrix.python-version }}
-        path: allure-results
-        retention-days: 7
-
-    - name: Generate Allure Report (optional)
-      if: always()
-      run: |
-        # установка allure-commandline (если нужен отчёт в CI)
-        # можно сделать отдельный job, но для начала просто сохраним сырые результаты
-        echo "Allure results saved. Download artifact to view report locally."
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: pip install pytest allure-pytest
+      - name: Run tests
+        run: pytest --alluredir=allure-results
+      - name: Load test report history
+        uses: actions/checkout@v4
+        if: always()
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+      - name: Build test report
+        uses: simple-elf/allure-report-action@master
+        if: always()
+        with:
+          gh_pages: gh-pages
+          allure_history: allure-history
+          allure_results: allure-results
+      - name: Publish test report
+        uses: peaceiris/actions-gh-pages@v3
+        if: always()
+        with:
+          personal_token: ${{ secrets.GH_PAGES_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+          force_orphan: true
